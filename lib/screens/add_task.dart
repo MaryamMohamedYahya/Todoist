@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:todoist/models/task.dart';
+import 'package:todoist/services/firestore_service.dart';
+import 'package:uuid/uuid.dart';
 
 class AddTask extends StatefulWidget {
    const AddTask({super.key});
@@ -12,7 +14,7 @@ class AddTask extends StatefulWidget {
 class _AddTaskState extends State<AddTask> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
-
+  final FirestoreService _firestoreService = FirestoreService();
   @override
   void dispose() {
     //TODO: implement dispose
@@ -20,6 +22,19 @@ class _AddTaskState extends State<AddTask> {
     _titleController.dispose();
     _descriptionController.dispose();
   }
+
+  void _savetask() async {
+    final newtask = Tasks(
+      id:Uuid().v1(),
+      title: _titleController.text,
+      description: _descriptionController.text,
+    );
+    await _firestoreService.addTask(newtask);
+  }
+
+
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -66,11 +81,8 @@ class _AddTaskState extends State<AddTask> {
             padding: const EdgeInsets.all(8.0),
             child: ElevatedButton(
               onPressed: () {
-                final newtask=Tasks(
-                  title: _titleController.text,
-                  description: _descriptionController.text,
-                );
-                Navigator.pop(context, newtask);
+                _savetask();
+                Navigator.pop(context);
               },
               child: Text(
                 "Add Task",

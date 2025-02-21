@@ -3,6 +3,7 @@ import 'package:todoist/screens/task_details.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:todoist/models/task.dart';
 import 'package:todoist/screens/add_task.dart';
+import 'package:todoist/services/firestore_service.dart';
 
 class HomePage extends StatefulWidget {
    const HomePage({super.key});
@@ -12,22 +13,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final List<Tasks> _tasks=[];
-
-  void addTasks(task){
-    setState(() {
-      _tasks.add(task);
-    });
-
-   
-  }
-  void deleteTasks(task){
-    setState(() {
-      _tasks.remove(task); 
-    });
 
 
-  }
+  final FirestoreService _firestoreService = FirestoreService();
+
+
 
   @override
   Widget build(BuildContext context) {
@@ -40,65 +30,63 @@ class _HomePageState extends State<HomePage> {
         ),
         ),
       ),
-      body: _tasks.isEmpty ? 
-      Center(
-        child: Text(
-          "No tasks added yet!",
-          style: GoogleFonts.sansita(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ) ,
-        ),
-      ) : ListView.builder(
-        itemCount: _tasks.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            onTap: (){
-              Navigator.push(
-                context, 
-                MaterialPageRoute(
-                  builder: (context)=>TaskDetails(
-                    task: _tasks[index],
-                  ),
-                ),
-              );
-            },
-            leading: Checkbox(
-              value: _tasks[index].isDone, 
-              onChanged: (value) {
-                setState(() {
-                  _tasks[index].isDone = value!;          
-                });
-              },
-            ),
-            title: Text(
-              _tasks[index].title,
-              style: GoogleFonts.sansita(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
+      body: StreamBuilder<List<Tasks>>(
+        stream: _firestoreService.getTasks(),
+        builder: (context,snapshot){
+
+          if(!snapshot.hasData){
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+
+
+          final tasks = snapshot.data!;
+          if(tasks.isEmpty){
+            return const Center(
+              child: Text("No tasks"),
+            );
+          }
+          return ListView.builder(itemCount:tasks.length,itemBuilder: (context, index){
+            return ListTile(
+              title: Text(tasks[index].title),
+              subtitle: Text(tasks[index].description),
+              leading: Checkbox(
+                value: tasks[index].isDone,
+                onChanged: (value) {
+                  _firestoreService.updateTask(tasks[index].id, value!);
+                },
               ),
-            ),
-            trailing:IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () {
-                deleteTasks(_tasks[index]);
+              trailing: IconButton(onPressed: (){
+                _firestoreService.deleteTask(tasks[index].id);
+              }, 
+              icon: Icon(Icons.delete)),
+
+
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => TaskDetails(
+                      task: tasks[index],
+                    ),
+                  ),
+                );
               },
+            );
+          },);
+        }),
+    floatingActionButton: FloatingActionButton(
+        child: Icon(Icons.add),
+        onPressed: () async {
+          Navigator.push(
+            context, 
+            MaterialPageRoute(builder: (context) => AddTask(),
             ),
           );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        child: Icon(Icons.add),
-        onPressed: ()async {
-        final newtasks = await Navigator.push(
-          context, MaterialPageRoute(builder: (context) => AddTask(),
-          ),
-        );
-
-        if (newtasks != null){
-          addTasks(newtasks);
-        }
-      }),
+  
+        }),
     );
   }
 }
